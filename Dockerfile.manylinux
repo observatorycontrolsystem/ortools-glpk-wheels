@@ -1,0 +1,147 @@
+# syntax=docker/dockerfile:1.4
+
+ARG PYTHON_VERSION=3.9
+ARG WHEEL_PLATFORM=manylinux_2_28_x86_64
+ARG ORTOOLS_VERSION=9.3
+ARG CMAKE_VERSION=3.23.2
+ARG SWIG_VERSION=4.0.2
+
+FROM --platform=$BUILDPLATFORM debian:bullseye-slim as downloader
+
+RUN <<EOT
+  #!/bin/bash -ex
+  apt-get update
+  apt-get install --no-install-recommends -y ca-certificates curl
+  update-ca-certificates
+EOT
+
+WORKDIR /src
+
+FROM downloader as ortools-down
+ARG ORTOOLS_VERSION
+
+# download & extract or-tools
+RUN <<EOT
+  #!/bin/bash -ex
+  curl -L --retry 5 "https://github.com/google/or-tools/archive/refs/tags/v${ORTOOLS_VERSION}.tar.gz" -o or-tools.tar.gz
+  tar -xf or-tools.tar.gz
+  rm -f or-tools.tar.gz
+  mv -f or-tools* or-tools
+EOT
+
+FROM downloader as cmake-down
+ARG CMAKE_VERSION
+
+# download & extract cmake
+RUN <<EOT
+  #!/bin/bash -ex
+  curl -L --retry 5 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz" -o cmake.tar.gz
+  tar -xf cmake.tar.gz
+  rm -f cmake.tar.gz
+  mv -f cmake* cmake
+EOT
+
+FROM downloader as swig-down
+ARG SWIG_VERSION
+
+# download & extract swig
+RUN <<EOT
+  #!/bin/bash -ex
+  curl -L --retry 5 "https://prdownloads.sourceforge.net/swig/swig-${SWIG_VERSION}.tar.gz" -o swig.tar.gz
+  tar -xf swig.tar.gz
+  rm -f swig.tar.gz
+  mv -f swig* swig
+EOT
+
+FROM python:${PYTHON_VERSION}-slim-buster as builder
+
+RUN <<EOT
+  #!/bin/bash -ex
+  apt-get update
+  apt-get install --no-install-recommends -y \
+     ca-certificates curl build-essential ccache libssl-dev make
+  update-ca-certificates
+EOT
+
+WORKDIR /src
+
+ENV PATH="/usr/lib/ccache:$PATH" CCACHE_DIR="/ccache"
+
+ARG TARGETPLATFORM
+
+# build & install cmake
+COPY --from=cmake-down /src/cmake /src/cmake
+
+RUN --mount=type=cache,id=cmake-ccache-${TARGETPLATFORM},target=/ccache,sharing=locked <<EOT
+  #!/bin/bash -ex
+  cd cmake
+  ./bootstrap --prefix=/usr/local --enable-ccache --parallel=8
+  make -j 8
+  make install
+EOT
+
+# build & install swig
+RUN apt-get install --no-install-recommends -y libpcre3-dev
+
+COPY --from=swig-down /src/swig /src/swig
+
+RUN --mount=type=cache,id=swig-ccache-${TARGETPLATFORM},target=/ccache,sharing=locked <<EOT
+  #!/bin/bash -ex
+  cd swig
+  ./configure --prefix=/usr/local
+  make -j 8
+  make install
+EOT
+
+# build or-tools
+RUN apt-get install --no-install-recommends -y \
+      git ninja-build pkg-config autoconf libtool lsb-release
+
+COPY --from=ortools-down /src/or-tools /src/or-tools
+
+COPY ./cmake-glpk-v9.3.patch /src/or-tools/cmake-glpk-v9.3.patch
+
+RUN --mount=type=cache,id=ortools-ccache-${TARGETPLATFORM},target=/ccache,sharing=locked <<EOT
+  #!/bin/bash -ex
+  cd or-tools
+  export PATH="/root/.local/bin:$PATH"
+  git apply ./cmake-glpk-v9.3.patch
+  cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_DEPS=ON -DUSE_GLPK=ON -DBUILD_GLPK=ON -DBUILD_FLATZINC=OFF \
+    -DBUILD_PYTHON=ON -DBUILD_SAMPLES=OFF -DBUILD_EXAMPLES=OFF \
+    -DBUILD_TESTING=OFF \
+    -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+  cmake --build build --parallel 8
+EOT
+
+# package up a manylinux wheel
+RUN apt-get install --no-install-recommends -y patchelf
+
+ARG WHEEL_PLATFORM
+
+RUN <<EOT
+  #!/bin/bash -ex
+  pip install auditwheel
+  cd /src/or-tools/build/python/dist
+  mkdir /wheelhouse
+  auditwheel repair --plat ${WHEEL_PLATFORM} *.whl -w /wheelhouse
+EOT
+
+FROM python:${PYTHON_VERSION}-slim-bullseye as tester
+
+WORKDIR /wheelhouse
+
+COPY --from=builder /wheelhouse/*.whl .
+
+RUN pip install *.whl
+
+RUN <<EOT
+  #!/bin/bash -ex
+  python -c "from ortools.linear_solver import pywraplp as p; p.Solver.CreateSolver('SCIP')"
+  python -c "from ortools.linear_solver import pywraplp as p; p.Solver.CreateSolver('GLPK')"
+EOT
+
+
+FROM scratch as wheelhouse
+
+COPY --from=tester /wheelhouse/*.whl .
