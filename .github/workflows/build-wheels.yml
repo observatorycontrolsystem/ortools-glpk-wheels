@@ -1,4 +1,7 @@
 name: Build Wheels
+
+concurrency: ${{ github.workflow }}
+
 on:
   push:
     branches:
@@ -42,3 +45,9 @@ jobs:
 
       - name: Bake
         run: docker buildx bake ${{ matrix.target }}
+        
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: ./wheelhouse/*
