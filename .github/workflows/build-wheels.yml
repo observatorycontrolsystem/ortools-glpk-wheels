@@ -38,7 +38,7 @@ jobs:
           path: /tmp/buildkit-cache/buildkit-state.tar
           key: buildkit-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
           restore-keys: |
-           buildkit-${{ runner.os }}-${{ matrix.target }-
+           buildkit-${{ runner.os }}-${{ matrix.target }}-
            buildkit-${{ runner.os }}-
       
       - name: Load buildkit state from cache
