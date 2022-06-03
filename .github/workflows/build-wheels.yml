@@ -33,7 +33,7 @@ jobs:
       - name: Enable buildkit cache
         uses: jashandeep-sohi/cache@master
         env:
-          FORCE_SAVE_CACHE: true
+          FORCE_SAVE_CACHE: "true"
         with:
           path: /tmp/buildkit-cache/buildkit-state.tar
           key: buildkit-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
