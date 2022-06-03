@@ -38,6 +38,7 @@ jobs:
         with:
           builder: buildx_buildkit_${{ steps.buildx.outputs.name }}0
           cache-path: /tmp/buildkit-cache
+          cache-max-size: 5g
 
       - name: Bake
         run: docker buildx bake ${{ matrix.target }}
