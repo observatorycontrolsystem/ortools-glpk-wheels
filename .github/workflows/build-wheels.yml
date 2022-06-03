@@ -31,7 +31,7 @@ jobs:
           install: true
         
       - name: Enable buildkit cache
-        uses: jashandeep-sohi/cache@master
+        uses: jashandeep-sohi/cache@31e100c3910cca70aeab409babf9ee1889ef1e1c
         env:
           FORCE_SAVE_CACHE: "true"
         with:
