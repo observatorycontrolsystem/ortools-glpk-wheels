@@ -6,6 +6,11 @@ on:
   push:
     branches:
       - "*"
+  
+  release:
+    types:
+      - published
+  
 jobs:
   manylinux:
     strategy:
@@ -51,7 +56,14 @@ jobs:
       - name: Bake
         run: docker buildx bake ${{ matrix.target }}
         
-      - name: Upload wheels
+      - name: Add wheels as build artifacts
         uses: actions/upload-artifact@v3
         with:
           path: ./wheelhouse/*.whl
+      
+      - name: Add wheels to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./wheelhouse/*.whl
+    
