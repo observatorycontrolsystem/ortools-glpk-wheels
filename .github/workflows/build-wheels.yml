@@ -41,10 +41,11 @@ jobs:
           FORCE_SAVE_CACHE: "true"
         with:
           path: /tmp/buildkit-cache/buildkit-state.tar
-          key: buildkit-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
+          key: buildkit-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_attempt }}
           restore-keys: |
-           buildkit-${{ runner.os }}-${{ matrix.target }}-
-           buildkit-${{ runner.os }}-
+            buildkit-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-
+            buildkit-${{ runner.os }}-${{ matrix.target }}-
+            buildkit-${{ runner.os }}-
       
       - name: Load buildkit state from cache
         uses: dashevo/gh-action-cache-buildkit-state@v1
