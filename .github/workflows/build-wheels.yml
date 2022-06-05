@@ -56,7 +56,7 @@ jobs:
           BUILDKIT_PRUNE_KEEP: 5g
         with:
           main-run: |
-            if test ! -f "$BUILDKIT_STATE_TAR"; then
+            if test ! -f "$BUILDKIT_CACHE_PATH/buildkit-state.tar.xz"; then
               echo "Nothing to restore"
               exit 0
             fi
