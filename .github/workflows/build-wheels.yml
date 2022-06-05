@@ -40,19 +40,36 @@ jobs:
         env:
           FORCE_SAVE_CACHE: "true"
         with:
-          path: /tmp/buildkit-cache/buildkit-state.tar
+          path: /tmp/buildkit-cache
           key: buildkit-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_attempt }}
           restore-keys: |
             buildkit-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-
             buildkit-${{ runner.os }}-${{ matrix.target }}-
             buildkit-${{ runner.os }}-
       
-      - name: Load buildkit state from cache
-        uses: dashevo/gh-action-cache-buildkit-state@v1
+      - name: Buildkit state from cache
+        uses: jashandeep-sohi/runs-action@v1.0.0
+        env:
+          POST_IF: "true"
+          BUILDKIT_CACHE_PATH: "/tmp/buildkit-cache"
+          BUILDKIT_CONTAINER: buildx_buildkit_${{ steps.buildx.outputs.name }}0
+          BUILDKIT_PRUNE_KEEP: 5g
         with:
-          builder: buildx_buildkit_${{ steps.buildx.outputs.name }}0
-          cache-path: /tmp/buildkit-cache
-          cache-max-size: 5g
+          main-run: |
+            if test ! -f "$BUILDKIT_STATE_TAR"; then
+              echo "Nothing to restore"
+              exit 0
+            fi
+            
+            docker buildx stop
+            docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUIDKIT_CACHE_PATH":/cache alpine tar x -C / -fJ /cache/buildkit-state.tar.xz
+            echo "Buildkit runner state restored from cache"
+          
+          post-run: |
+            docker buildx prune --verbose --force --keep-storage "$BUILDKIT_PRUNE_KEEP"
+            
+            docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUIDKIT_CACHE_PATH":/cache alpine tar c -C / -fJ /cache/buildkit-state.tar.xz /var/lib/buildkit
+            echo "Created buildkit runner state archive"
 
       - name: Bake
         run: docker buildx bake ${{ matrix.target }}
