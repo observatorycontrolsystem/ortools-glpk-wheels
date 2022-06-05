@@ -63,13 +63,13 @@ jobs:
             fi
             
             docker buildx stop
-            docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUILDKIT_CACHE_PATH":/cache alpine apk --no-cache add xz && ls -lha /cache && tar x -v -J -C / -f /cache/buildkit-state.tar.xz
+            docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUILDKIT_CACHE_PATH":/cache alpine sh -exc 'apk --no-cache add xz && tar x -v -J -C / -f /cache/buildkit-state.tar.xz'
             echo "Buildkit runner state restored from cache"
           
           post-run: |
             docker buildx prune --verbose --force --keep-storage "$BUILDKIT_PRUNE_KEEP"
             
-            docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUILDKIT_CACHE_PATH":/cache alpine apk --no-cache add xz && tar c -v -J -C / -f /cache/buildkit-state.tar.xz /var/lib/buildkit
+            docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUILDKIT_CACHE_PATH":/cache alpine sh -exc 'apk --no-cache add xz && tar c -v -J -C / -f /cache/buildkit-state.tar.xz /var/lib/buildkit'
             echo "Created buildkit runner state archive"
 
       - name: Bake
