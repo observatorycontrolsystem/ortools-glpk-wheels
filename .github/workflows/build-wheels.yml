@@ -68,8 +68,9 @@ jobs:
             fi
             
           post-run: |
-            docker buildx stop
             docker buildx prune --verbose --force --keep-storage "$BUILDKIT_PRUNE_KEEP"
+            
+            docker buildx stop
             
             docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUILDKIT_CACHE_PATH":/cache alpine sh -exc 'apk --no-cache add xz && tar c -J -C / -f /cache/buildkit-state.tar.xz /var/lib/buildkit'
             echo "Created buildkit runner state archive"
