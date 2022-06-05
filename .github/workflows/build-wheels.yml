@@ -56,13 +56,14 @@ jobs:
           BUILDKIT_PRUNE_KEEP: 5g
         with:
           main-run: |
+            ls -lha $BUILDKIT_CACHE_PATH
             if test ! -f "$BUILDKIT_CACHE_PATH/buildkit-state.tar.xz"; then
               echo "Nothing to restore"
               exit 0
             fi
             
             docker buildx stop
-            docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUILDKIT_CACHE_PATH":/cache alpine apk --no-cache add xz && tar x -v -J -C / -f /cache/buildkit-state.tar.xz
+            docker run --rm --volumes-from "$BUILDKIT_CONTAINER" -v "$BUILDKIT_CACHE_PATH":/cache alpine apk --no-cache add xz && ls -lha /cache && tar x -v -J -C / -f /cache/buildkit-state.tar.xz
             echo "Buildkit runner state restored from cache"
           
           post-run: |
