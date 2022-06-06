@@ -18,7 +18,6 @@ jobs:
       matrix:
         target:
           - manylinux-x86_64
-          - manylinux-aarch64
           
     runs-on: ubuntu-latest
 
