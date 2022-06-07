@@ -2,6 +2,10 @@ variable "OUTPUT" {
   default = "./"
 }
 
+variable "CACHE_IMAGE" {
+  default = ""
+}
+
 group "default" {
   targets = ["manylinux-x86_64", "manylinux-aarch64"]
 }
@@ -17,6 +21,12 @@ group "manylinux-aarch64" {
 target "_manylinux" {
   dockerfile = "Dockerfile.manylinux"
   output = ["${OUTPUT}"]
+  cache-from = [
+    notequal("", CACHE_IMAGE) ? "type=registry,ref=${CACHE_IMAGE}": ""
+  ]
+  cache-to = [
+    notequal("", CACHE_IMAGE) ? "type=registry,ref=${CACHE_IMAGE}": ""
+  ]
 }
 
 target "_x86_64" {
