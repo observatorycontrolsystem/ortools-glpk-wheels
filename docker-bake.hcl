@@ -21,6 +21,11 @@ group "manylinux-aarch64" {
 target "_manylinux" {
   dockerfile = "Dockerfile.manylinux"
   output = ["${OUTPUT}"]
+  contexts = {
+    cmake = "target:cmake"
+    swig = "target:swig"
+    ortools-src = "target:ortools-src"
+  }
   cache-from = [
     notequal("", CACHE_IMAGE) ? "type=registry,ref=${CACHE_IMAGE}": ""
   ]
@@ -83,4 +88,19 @@ target "39-manylinux-aarch64" {
 
 target "38-manylinux-aarch64" {
   inherits = ["_manylinux", "_python-38", "_aarch64"]
+}
+
+target "cmake" {
+  dockerfile = "Dockerfile.manylinux"
+  target = "cmake"
+}
+
+target "swig" {
+  dockerfile = "Dockerfile.manylinux"
+  target = "swig"
+}
+
+target "ortools-src" {
+  dockerfile = "Dockerfile.manylinux"
+  target = "ortools-src"
 }
