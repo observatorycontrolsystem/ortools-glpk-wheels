@@ -8,10 +8,10 @@ ARG SWIG_VERSION=4.0.2
 FROM --platform=linux/amd64 debian:bullseye-slim as downloader
 
 RUN <<EOT
-  #!/bin/bash -ex
-  apt-get update
-  apt-get install --no-install-recommends -y ca-certificates curl
-  update-ca-certificates
+#!/bin/bash -ex
+apt-get update
+apt-get install --no-install-recommends -y ca-certificates curl
+update-ca-certificates
 EOT
 
 WORKDIR /src
@@ -21,11 +21,11 @@ ARG ORTOOLS_VERSION
 
 # download & extract or-tools
 RUN <<EOT
-  #!/bin/bash -ex
-  curl -L --retry 5 "https://github.com/google/or-tools/archive/refs/tags/v${ORTOOLS_VERSION}.tar.gz" -o or-tools.tar.gz
-  tar -xf or-tools.tar.gz
-  rm -f or-tools.tar.gz
-  mv -f or-tools* or-tools
+#!/bin/bash -ex
+curl -L --retry 5 "https://github.com/google/or-tools/archive/refs/tags/v${ORTOOLS_VERSION}.tar.gz" -o or-tools.tar.gz
+tar -xf or-tools.tar.gz
+rm -f or-tools.tar.gz
+mv -f or-tools* or-tools
 EOT
 
 FROM downloader as cmake-src
@@ -33,11 +33,11 @@ ARG CMAKE_VERSION
 
 # download & extract cmake
 RUN <<EOT
-  #!/bin/bash -ex
-  curl -L --retry 5 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz" -o cmake.tar.gz
-  tar -xf cmake.tar.gz
-  rm -f cmake.tar.gz
-  mv -f cmake* cmake
+#!/bin/bash -ex
+curl -L --retry 5 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz" -o cmake.tar.gz
+tar -xf cmake.tar.gz
+rm -f cmake.tar.gz
+mv -f cmake* cmake
 EOT
 
 FROM downloader as swig-src
@@ -45,21 +45,21 @@ ARG SWIG_VERSION
 
 # download & extract swig
 RUN <<EOT
-  #!/bin/bash -ex
-  curl -L --retry 5 "https://prdownloads.sourceforge.net/swig/swig-${SWIG_VERSION}.tar.gz" -o swig.tar.gz
-  tar -xf swig.tar.gz
-  rm -f swig.tar.gz
-  mv -f swig* swig
+#!/bin/bash -ex
+curl -L --retry 5 "https://prdownloads.sourceforge.net/swig/swig-${SWIG_VERSION}.tar.gz" -o swig.tar.gz
+tar -xf swig.tar.gz
+rm -f swig.tar.gz
+mv -f swig* swig
 EOT
 
 FROM --platform=linux/amd64 debian:buster-slim as depbuilder
 
 RUN <<EOT
-  #!/bin/bash -ex
-  apt-get update
-  apt-get install --no-install-recommends -y \
-     ca-certificates curl build-essential ccache libssl-dev make
-  update-ca-certificates
+#!/bin/bash -ex
+apt-get update
+apt-get install --no-install-recommends -y \
+   ca-certificates curl build-essential ccache libssl-dev make
+update-ca-certificates
 EOT
 
 WORKDIR /src
@@ -77,11 +77,11 @@ FROM depbuilder as cmake-builder
 COPY --from=cmake-src /src/cmake /src/cmake
 
 RUN --mount=type=cache,target=/ccache,from=ccache,id=ccache <<EOT
-  #!/bin/bash -ex
-  cd cmake
-  ./bootstrap --prefix=/usr/local --enable-ccache --parallel=8
-  make -j 8
-  make DESTDIR=/opt/cmake install
+#!/bin/bash -ex
+cd cmake
+./bootstrap --prefix=/usr/local --enable-ccache --parallel=8
+make -j 8
+make DESTDIR=/opt/cmake install
 EOT
 
 FROM scratch as cmake
@@ -95,11 +95,11 @@ RUN apt-get install --no-install-recommends -y libpcre3-dev libssl-dev
 COPY --from=swig-src /src/swig /src/swig
 
 RUN --mount=type=cache,target=/ccache,from=ccache,id=ccache <<EOT
-  #!/bin/bash -ex
-  cd swig
-  ./configure --prefix=/usr/local
-  make -j 8
-  make DESTDIR=/opt/swig install
+#!/bin/bash -ex
+cd swig
+./configure --prefix=/usr/local
+make -j 8
+make DESTDIR=/opt/swig install
 EOT
 
 FROM scratch as swig
@@ -109,11 +109,11 @@ COPY --from=swig-builder /opt/swig /
 FROM --platform=linux/amd64 python:${PYTHON_VERSION}-slim-buster as ortools-builder-base
 
 RUN <<EOT
-  #!/bin/bash -ex
-  apt-get update
-  apt-get install --no-install-recommends -y \
-     ca-certificates ccache
-  update-ca-certificates
+#!/bin/bash -ex
+apt-get update
+apt-get install --no-install-recommends -y \
+   ca-certificates ccache
+update-ca-certificates
 EOT
 
 WORKDIR /src
