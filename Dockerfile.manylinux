@@ -158,9 +158,13 @@ export PATH="/root/.local/bin:$PATH"
 git apply ./cmake-glpk-v9.3.patch
 git apply ./bdist-wheel-cross.patch
 xx-clang --setup-target-triple
+# for some reason you have to do this twice for -DPYTHON_MODULE_EXTENSION to
+# take effect :(
+for i in {1..2}; do
 cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_DEPS=ON -DUSE_GLPK=ON -DBUILD_GLPK=ON -DBUILD_FLATZINC=OFF \
   -DBUILD_PYTHON=ON -DBUILD_SAMPLES=OFF -DBUILD_EXAMPLES=OFF \
+  -DFETCH_PYTHON_DEPS=ON \
   -DBUILD_TESTING=OFF \
   -DCMAKE_C_COMPILER=clang \
   -DCMAKE_CXX_COMPILER=clang++ \
@@ -170,8 +174,9 @@ cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_COMPILER_TARGET="$(xx-clang++ --print-target-triple)" \
   -DCMAKE_ASM_COMPILER_TARGET="$(xx-clang --print-target-triple)" \
   -DCMAKE_STRIP=/usr/bin/$(xx-info)-strip \
-  -DPYTHON_BDIST_WHEEL_EXTRA_ARGS="--plat-name=linux-${WHEEL_ARCH}"\
+  -DPYTHON_BDIST_WHEEL_EXTRA_ARGS="--plat-name=linux-${WHEEL_ARCH}" \
   -DPYTHON_MODULE_EXTENSION="$(python-config --extension-suffix | sed s/x86_64/${WHEEL_ARCH}/)"
+done
 EOT
 
 RUN \
