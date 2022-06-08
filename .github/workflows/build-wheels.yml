@@ -63,7 +63,7 @@ jobs:
 
       - name: Bake
         env:
-          CACHE_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          CACHE_TO_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           CACHE_TAG_PREFIX: cache-
           CCACHE: ./output/ccache
         run: |

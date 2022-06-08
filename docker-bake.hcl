@@ -6,17 +6,26 @@ variable "CCACHE" {
   default = ""
 }
 
-variable "CACHE_IMAGE" {
+variable "CACHE_TO_IMAGE" {
   default = ""
+}
+
+variable "CACHE_FROM_IMAGE" {
+  default = "${CACHE_TO_IMAGE}"
 }
 
 variable "CACHE_TAG_PREFIX" {
   default = "cache-"
 }
 
-function "cacheReg" {
+function "cacheFromReg" {
   params = [name]
-  result = notequal("", CACHE_IMAGE) ? "type=registry,ref=${CACHE_IMAGE}:${CACHE_TAG_PREFIX}${name}": ""
+  result = notequal("", CACHE_FROM_IMAGE) ? "type=registry,ref=${CACHE_FROM_IMAGE}:${CACHE_TAG_PREFIX}${name}": ""
+}
+
+function "cacheToReg" {
+  params = [name]
+  result = notequal("", CACHE_TO_IMAGE) ? "type=registry,ref=${CACHE_TO_IMAGE}:${CACHE_TAG_PREFIX}${name}": ""
 }
 
 group "default" {
@@ -41,9 +50,9 @@ target "_manylinux" {
     ccache = notequal("", CCACHE) ? "${CCACHE}": ""
   }
   cache-from = [
-    cacheReg("ortools-src"),
-    cacheReg("cmake"),
-    cacheReg("swig"),
+    cacheFromReg("ortools-src"),
+    cacheFromReg("cmake"),
+    cacheFromReg("swig"),
   ]
 }
 
@@ -110,10 +119,10 @@ target "cmake" {
     cmake-src = "target:cmake-src"
   }
   cache-to = [
-    cacheReg("cmake")
+    cacheToReg("cmake")
   ]
   cache-from = [
-    cacheReg("cmake")
+    cacheFromReg("cmake")
   ]
 }
 
@@ -124,10 +133,10 @@ target "swig" {
     swig-src = "target:swig-src"
   }
   cache-to = [
-    cacheReg("swig")
+    cacheToReg("swig")
   ]
   cache-from = [
-    cacheReg("swig")
+    cacheFromReg("swig")
   ]
 }
 
@@ -135,10 +144,10 @@ target "ortools-src" {
   dockerfile = "Dockerfile.buildsrc"
   target = "ortools-src"
   cache-to = [
-    cacheReg("ortools-src")
+    cacheToReg("ortools-src")
   ]
   cache-from = [
-    cacheReg("ortools-src")
+    cacheFromReg("ortools-src")
   ]
 }
 
@@ -146,10 +155,10 @@ target "cmake-src" {
   dockerfile = "Dockerfile.buildsrc"
   target = "cmake-src"
   cache-to = [
-    cacheReg("cmake-src")
+    cacheToReg("cmake-src")
   ]
   cache-from = [
-    cacheReg("cmake-src")
+    cacheFromReg("cmake-src")
   ]
 }
 
@@ -157,9 +166,9 @@ target "swig-src" {
   dockerfile = "Dockerfile.buildsrc"
   target = "swig-src"
   cache-to = [
-    cacheReg("swig-src")
+    cacheToReg("swig-src")
   ]
   cache-from = [
-    cacheReg("swig-src")
+    cacheFromReg("swig-src")
   ]
 }
