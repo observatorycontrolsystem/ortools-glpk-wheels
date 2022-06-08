@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1.4
+
+ARG ORTOOLS_VERSION=9.3
+ARG CMAKE_VERSION=3.23.2
+ARG SWIG_VERSION=4.0.2
+
+FROM --platform=linux/amd64 alpine:3 as downloader
+
+RUN <<EOT
+#!/bin/sh -ex
+apk add --update --no-cache curl tar bash
+EOT
+
+WORKDIR /src
+
+
+# download & extract or-tools
+FROM downloader as ortools-downloader
+ARG ORTOOLS_VERSION
+
+RUN <<EOT
+#!/bin/bash -ex
+curl -L --retry 5 "https://github.com/google/or-tools/archive/refs/tags/v${ORTOOLS_VERSION}.tar.gz" -o or-tools.tar.gz
+tar -xf or-tools.tar.gz
+rm -f or-tools.tar.gz
+mv -f or-tools* or-tools
+EOT
+
+FROM scratch as ortools-src
+COPY --from=ortools-downloader /src/or-tools /
+
+
+# download & extract cmake
+FROM downloader as cmake-downloader
+ARG CMAKE_VERSION
+
+RUN <<EOT
+#!/bin/bash -ex
+curl -L --retry 5 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz" -o cmake.tar.gz
+tar -xf cmake.tar.gz
+rm -f cmake.tar.gz
+mv -f cmake* cmake
+EOT
+
+FROM scratch as cmake-src
+COPY --from=cmake-downloader /src/cmake /
+
+
+# download & extract swig
+FROM downloader as swig-downloader
+ARG SWIG_VERSION
+
+RUN <<EOT
+#!/bin/bash -ex
+curl -L --retry 5 "https://prdownloads.sourceforge.net/swig/swig-${SWIG_VERSION}.tar.gz" -o swig.tar.gz
+tar -xf swig.tar.gz
+rm -f swig.tar.gz
+mv -f swig* swig
+EOT
+
+FROM scratch as swig-src
+COPY --from=swig-downloader /src/swig /

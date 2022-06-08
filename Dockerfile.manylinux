@@ -1,109 +1,14 @@
 # syntax=docker/dockerfile:1.4
+
 ARG WHEEL_ARCH
-ARG PYTHON_VERSION=3.9
-ARG ORTOOLS_VERSION=9.3
-ARG CMAKE_VERSION=3.23.2
-ARG SWIG_VERSION=4.0.2
-
-FROM --platform=linux/amd64 debian:bullseye-slim as downloader
-
-RUN <<EOT
-#!/bin/bash -ex
-apt-get update
-apt-get install --no-install-recommends -y ca-certificates curl
-update-ca-certificates
-EOT
-
-WORKDIR /src
-
-FROM downloader as ortools-src
-ARG ORTOOLS_VERSION
-
-# download & extract or-tools
-RUN <<EOT
-#!/bin/bash -ex
-curl -L --retry 5 "https://github.com/google/or-tools/archive/refs/tags/v${ORTOOLS_VERSION}.tar.gz" -o or-tools.tar.gz
-tar -xf or-tools.tar.gz
-rm -f or-tools.tar.gz
-mv -f or-tools* or-tools
-EOT
-
-FROM downloader as cmake-src
-ARG CMAKE_VERSION
-
-# download & extract cmake
-RUN <<EOT
-#!/bin/bash -ex
-curl -L --retry 5 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz" -o cmake.tar.gz
-tar -xf cmake.tar.gz
-rm -f cmake.tar.gz
-mv -f cmake* cmake
-EOT
-
-FROM downloader as swig-src
-ARG SWIG_VERSION
-
-# download & extract swig
-RUN <<EOT
-#!/bin/bash -ex
-curl -L --retry 5 "https://prdownloads.sourceforge.net/swig/swig-${SWIG_VERSION}.tar.gz" -o swig.tar.gz
-tar -xf swig.tar.gz
-rm -f swig.tar.gz
-mv -f swig* swig
-EOT
-
-FROM --platform=linux/amd64 debian:buster-slim as depbuilder
-
-RUN <<EOT
-#!/bin/bash -ex
-apt-get update
-apt-get install --no-install-recommends -y \
-   ca-certificates curl build-essential ccache libssl-dev make
-update-ca-certificates
-EOT
-
-WORKDIR /src
-
-# setup ccache
-ENV PATH="/usr/lib/ccache:$PATH" CCACHE_DIR="/ccache"
-
+ARG PYTHON_VERSION
 
 FROM scratch as ccache
 
-
-FROM depbuilder as cmake-builder
-
-# build & install cmake
-COPY --from=cmake-src /src/cmake /src/cmake
-
-RUN --mount=type=cache,target=/ccache,from=ccache,id=ccache <<EOT
-#!/bin/bash -ex
-cd cmake
-./bootstrap --prefix=/usr/local --enable-ccache --parallel=8
-make -j 8
-make DESTDIR=/opt/cmake install
-EOT
-
+# these must be injected by bake
 FROM scratch as cmake
-COPY --from=cmake-builder /opt/cmake /
-
-FROM depbuilder as swig-builder
-
-# build swig
-RUN apt-get install --no-install-recommends -y libpcre3-dev libssl-dev
-
-COPY --from=swig-src /src/swig /src/swig
-
-RUN --mount=type=cache,target=/ccache,from=ccache,id=ccache <<EOT
-#!/bin/bash -ex
-cd swig
-./configure --prefix=/usr/local
-make -j 8
-make DESTDIR=/opt/swig install
-EOT
-
 FROM scratch as swig
-COPY --from=swig-builder /opt/swig /
+FROM scratch as ortools-src
 
 
 FROM --platform=linux/amd64 python:${PYTHON_VERSION}-slim-buster as ortools-builder-base
@@ -122,18 +27,21 @@ WORKDIR /src
 ENV PATH="/usr/lib/ccache:$PATH" CCACHE_DIR="/ccache"
 
 # install cmake
-COPY --from=cmake / /
+COPY --link --from=cmake / /
 
 # install swig
-COPY --from=swig / /
+COPY --link --from=swig / /
 
 WORKDIR /src/or-tools
 
-COPY --from=ortools-src /src/or-tools .
+COPY --link --from=ortools-src / .
+
 
 # cross-compiler helper
 FROM --platform=linux/amd64 tonistiigi/xx AS xx
 
+
+# build or-tools
 FROM ortools-builder-base as ortools-builder
 
 # setup cross-compiler scripts
@@ -142,7 +50,6 @@ COPY --from=xx / /
 ARG TARGETPLATFORM
 ARG WHEEL_ARCH
 
-# build or-tools
 RUN apt-get install --no-install-recommends -y \
       git ninja-build clang lld make
 
@@ -186,7 +93,9 @@ RUN \
 xx-clang --setup-target-triple
 export PATH="/root/.local/bin:$PATH"
 cmake --build build --parallel 8
+cp -r --dereference /ccache /ccache-export
 EOT
+
 
 # package up a manylinux wheel
 FROM python:${PYTHON_VERSION}-slim-buster as tester
@@ -220,8 +129,11 @@ COPY ./test_ortools.py .
 
 RUN python test_ortools.py
 
+
 FROM scratch as output
 
 WORKDIR /wheelhouse
 
 COPY --from=tester /wheelhouse/*.whl .
+
+COPY --from=ortools-builder /ccache-export /ccache

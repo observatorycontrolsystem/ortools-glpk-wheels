@@ -1,9 +1,22 @@
 variable "OUTPUT" {
-  default = "./"
+  default = "./output"
+}
+
+variable "CCACHE" {
+  default = ""
 }
 
 variable "CACHE_IMAGE" {
   default = ""
+}
+
+variable "CACHE_TAG_PREFIX" {
+  default = "cache-"
+}
+
+function "cacheReg" {
+  params = [name]
+  result = notequal("", CACHE_IMAGE) ? "type=registry,ref=${CACHE_IMAGE}:${CACHE_TAG_PREFIX}${name}": ""
 }
 
 group "default" {
@@ -25,12 +38,12 @@ target "_manylinux" {
     cmake = "target:cmake"
     swig = "target:swig"
     ortools-src = "target:ortools-src"
+    ccache = notequal("", CCACHE) ? "${CCACHE}": ""
   }
   cache-from = [
-    notequal("", CACHE_IMAGE) ? "type=registry,ref=${CACHE_IMAGE}": ""
-  ]
-  cache-to = [
-    notequal("", CACHE_IMAGE) ? "type=registry,ref=${CACHE_IMAGE}": ""
+    cacheReg("ortools-src"),
+    cacheReg("cmake"),
+    cacheReg("swig"),
   ]
 }
 
@@ -91,16 +104,62 @@ target "38-manylinux-aarch64" {
 }
 
 target "cmake" {
-  dockerfile = "Dockerfile.manylinux"
+  dockerfile = "Dockerfile.manylinux-buildtools"
   target = "cmake"
+  contexts = {
+    cmake-src = "target:cmake-src"
+  }
+  cache-to = [
+    cacheReg("cmake")
+  ]
+  cache-from = [
+    cacheReg("cmake")
+  ]
 }
 
 target "swig" {
-  dockerfile = "Dockerfile.manylinux"
+  dockerfile = "Dockerfile.manylinux-buildtools"
   target = "swig"
+  contexts = {
+    swig-src = "target:swig-src"
+  }
+  cache-to = [
+    cacheReg("swig")
+  ]
+  cache-from = [
+    cacheReg("swig")
+  ]
 }
 
 target "ortools-src" {
-  dockerfile = "Dockerfile.manylinux"
+  dockerfile = "Dockerfile.buildsrc"
   target = "ortools-src"
+  cache-to = [
+    cacheReg("ortools-src")
+  ]
+  cache-from = [
+    cacheReg("ortools-src")
+  ]
+}
+
+target "cmake-src" {
+  dockerfile = "Dockerfile.buildsrc"
+  target = "cmake-src"
+  cache-to = [
+    cacheReg("cmake-src")
+  ]
+  cache-from = [
+    cacheReg("cmake-src")
+  ]
+}
+
+target "swig-src" {
+  dockerfile = "Dockerfile.buildsrc"
+  target = "swig-src"
+  cache-to = [
+    cacheReg("swig-src")
+  ]
+  cache-from = [
+    cacheReg("swig-src")
+  ]
 }

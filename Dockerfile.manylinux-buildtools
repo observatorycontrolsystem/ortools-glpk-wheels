@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1.4
+
+# this can be injected by bake
+FROM scratch as ccache
+
+# these must be injected by bake
+FROM scratch as cmake-src
+FROM scratch as swig-src
+
+
+# base image to build dependencies
+FROM --platform=linux/amd64 debian:buster-slim as depbuilder
+
+RUN <<EOT
+#!/bin/bash -ex
+apt-get update
+apt-get install --no-install-recommends -y \
+   ca-certificates curl build-essential ccache libssl-dev make
+update-ca-certificates
+EOT
+
+WORKDIR /src
+
+# setup ccache
+ENV PATH="/usr/lib/ccache:$PATH" CCACHE_DIR="/ccache"
+
+
+
+# build & install cmake
+FROM depbuilder as cmake-builder
+
+COPY --link --from=cmake-src / /src/cmake
+
+RUN --mount=type=cache,target=/ccache,from=ccache,id=ccache <<EOT
+#!/bin/bash -ex
+cd cmake
+./bootstrap --prefix=/usr/local --enable-ccache --parallel=8
+make -j 8
+make DESTDIR=/opt/cmake install
+EOT
+
+FROM scratch as cmake
+COPY --from=cmake-builder /opt/cmake /
+
+
+FROM depbuilder as swig-builder
+
+# build swig
+RUN apt-get install --no-install-recommends -y libpcre3-dev libssl-dev
+
+COPY --link --from=swig-src / /src/swig
+
+RUN --mount=type=cache,target=/ccache,from=ccache,id=ccache <<EOT
+#!/bin/bash -ex
+cd swig
+./configure --prefix=/usr/local
+make -j 8
+make DESTDIR=/opt/swig install
+EOT
+
+FROM scratch as swig
+COPY --from=swig-builder /opt/swig /
