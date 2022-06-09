@@ -36,6 +36,13 @@ WORKDIR /src/or-tools
 
 COPY --link --from=ortools-src / .
 
+RUN apt-get install --no-install-recommends -y \
+      git ninja-build clang lld make
+
+COPY ./cmake-glpk-v9.3.patch .
+
+COPY ./bdist-wheel-cross.patch .
+
 
 # cross-compiler helper
 FROM --platform=linux/amd64 tonistiigi/xx AS xx
@@ -50,14 +57,7 @@ COPY --from=xx / /
 ARG TARGETPLATFORM
 ARG WHEEL_ARCH
 
-RUN apt-get install --no-install-recommends -y \
-      git ninja-build clang lld make
-
 RUN xx-apt-get install --no-install-recommends -y libstdc++-8-dev libc6-dev llvm
-
-COPY ./cmake-glpk-v9.3.patch .
-
-COPY ./bdist-wheel-cross.patch .
 
 RUN <<EOT
 #!/bin/bash -ex

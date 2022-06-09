@@ -16,9 +16,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - manylinux-x86_64
-          - manylinux-aarch64
+        arch:
+          - x86_64
+          - aarch64
+        version:
+          - "310"
+          - "39"
+          - "38"
+          - "37"
 
     runs-on: ubuntu-latest
 
@@ -54,11 +59,13 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ./output/ccache
-          key: ccache-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_attempt }}
+          key: ccache-${{ runner.os }}-manylinux-${{ matrix.arch }}-${{ matrix.version }}-${{ github.sha }}-${{ github.run_attempt }}
           restore-keys: |
-            ccache-${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-
-            ccache-${{ runner.os }}-${{ matrix.target }}-
-            ccache-${{ runner.os }}-
+            ccache-${{ runner.os }}-manylinux-${{ matrix.arch }}-${{ matrix.version }}-${{ github.sha }}
+            ccache-${{ runner.os }}-manylinux-${{ matrix.arch }}-${{ matrix.version }}
+            ccache-${{ runner.os }}-manylinux-${{ matrix.arch }}
+            ccache-${{ runner.os }}-manylinux
+            ccache-${{ runner.os }}
             ccache-
 
       - name: Bake
@@ -68,11 +75,12 @@ jobs:
           CCACHE: ./output/ccache
         run: |
           mkdir -p ./output/ccache
-          docker buildx bake ${{ matrix.target }}
+          docker buildx bake ${{ matrix.version }}-manylinux-${{ matrix.arch }}
 
       - name: Add wheels as build artifacts
         uses: actions/upload-artifact@v3
         with:
+          name: wheels
           path: ./output/wheelhouse/*.whl
 
       - name: Add wheels to release

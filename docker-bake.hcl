@@ -88,6 +88,12 @@ target "_python-38" {
   }
 }
 
+target "_python-37" {
+  args = {
+    PYTHON_VERSION = "3.7"
+  }
+}
+
 target "310-manylinux-x86_64" {
   inherits = ["_manylinux", "_python-310", "_x86_64"]
 }
@@ -100,6 +106,10 @@ target "38-manylinux-x86_64" {
   inherits = ["_manylinux", "_python-38", "_x86_64"]
 }
 
+target "37-manylinux-x86_64" {
+  inherits = ["_manylinux", "_python-37", "_x86_64"]
+}
+
 target "310-manylinux-aarch64" {
   inherits = ["_manylinux", "_python-310", "_aarch64"]
 }
@@ -110,6 +120,10 @@ target "39-manylinux-aarch64" {
 
 target "38-manylinux-aarch64" {
   inherits = ["_manylinux", "_python-38", "_aarch64"]
+}
+
+target "37-manylinux-aarch64" {
+  inherits = ["_manylinux", "_python-37", "_aarch64"]
 }
 
 target "cmake" {
