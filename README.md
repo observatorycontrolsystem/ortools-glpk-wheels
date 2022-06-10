@@ -21,4 +21,4 @@ wheelhouse/
 ```
 ## Release
 
-Builds are hosted at https://github.com/observatorycontrolsystem/ortools-glpk-wheels/releases
+On tag wheels are built and hosted at https://github.com/observatorycontrolsystem/ortools-glpk-wheels/releases
