@@ -19,3 +19,6 @@ wheelhouse/
 
 0 directories, 6 files
 ```
+## Release
+
+Builds are hosted at https://github.com/observatorycontrolsystem/ortools-glpk-wheels/releases
